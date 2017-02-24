@@ -11,6 +11,7 @@ import time
 
 import requests
 from concurrent import futures
+import getpass
 
 
 BASE_URL = "http://e4ftl01.cr.usgs.gov/"
@@ -71,13 +72,13 @@ def download_granule_list(url, tiles):
     return grab
 
 
-def download_granules(url, output_dir):
+def download_granules(url, output_dir, uname = None, upass = None):
     fname = url.split("/")[-1]
     output_fname = os.path.join(output_dir, fname)
     with open(output_fname, 'wb') as fp:
         while True:
             try:
-                r = requests.get(url, stream=True)
+                r = requests.get(url, stream=True, auth=(uname, upass))
                 break
             except requests.execeptions.ConnectionError:
                 sleep ( 240 )
@@ -88,7 +89,7 @@ def download_granules(url, output_dir):
 
 
 def get_modis_data(platform, product, tiles, output_dir, start_date,
-                   end_date=None, n_threads=5):
+                   end_date=None, n_threads=5, uname = None, upass = None):
     """The main workhorse of MODIS downloading. This function will grab
     products for a particular platform (MOLT, MOLA or MOTA). The products
     are specified by their MODIS code (e.g. MCD45A1.051 or MOD09GA.006).
@@ -118,6 +119,10 @@ def get_modis_data(platform, product, tiles, output_dir, start_date,
         as to what a good number would be here...
 
     """
+    if uname==None:
+        print "LP DAAC now requires authentification. Please supply a username"
+    if upass == None:
+        upass = getpass.getpass()
     # Ensure the platform is OK
     assert platform.upper() in [ "MOLA", "MOLT", "MOTA"], \
         "%s is not a valid platform. Valid ones are MOLA, MOLT, MOTA" % \
@@ -142,7 +147,7 @@ def get_modis_data(platform, product, tiles, output_dir, start_date,
     gr.sort()
     print "Will download %d files" % len ( gr )
     download_granule_patch = partial(download_granules,
-                                     output_dir=output_dir)
+                                     output_dir=output_dir, uname=uname, upass=upass)
     # Wait for a few minutes before downloading the data
     time.sleep ( 240 )
     # The main download loop. This will get all the URLs with the filenames,
